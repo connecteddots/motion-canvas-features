@@ -1,7 +1,9 @@
-import { Circle, Line, Txt, makeScene2D} from '@motion-canvas/2d';
-import { all, waitFor, waitUntil, createRef } from '@motion-canvas/core';
+import { Circle, Line, Txt, Img, makeScene2D } from '@motion-canvas/2d';
+import { all, waitFor, useLogger, createRef } from '@motion-canvas/core';
 
 export default makeScene2D(function* (view) {
+  const logger = useLogger();
+
   const markerCount = 5;
   const xAxisExtend = 50;
   const startX = -500;
@@ -56,16 +58,47 @@ export default makeScene2D(function* (view) {
         opacity={0}
       />
     );
-  }
 
-  // Animate markers and labels
-  for (let i = 0; i < markerCount; i++) {
     yield* waitFor(0.2);
     yield* all(
       markerRefs[i]().scale(1, 0.5),
       labelRefs[i]().opacity(1, 0.5)
     );
+
+    for (let index = 0; index <= i; index++) {
+      logger.info(`${i},${index},${-100 - i * 100}`)
+
+      const ref = createRef<Img>();
+      yield view.add(
+        <Img
+          x={x}
+          y={-100 - index * 100}
+          ref={ref}
+          src="../../assets/black rabbit standing.svg"
+          width={50}
+          radius={50}
+        />,
+      );
+
+      yield all(
+        ref().size([100, 100], 1).to([50, null], 1),
+        ref().radius(50, 1).to(20, 1),
+        // ref().alpha(0, 1).to(1, 1),
+      );
+      yield* waitFor(0.5);
+    }
+
+
   }
+
+  // Animate markers and labels
+  // for (let i = 0; i < markerCount; i++) {
+  //   yield* waitFor(0.2);
+  //   yield* all(
+  //     markerRefs[i]().scale(1, 0.5),
+  //     labelRefs[i]().opacity(1, 0.5)
+  //   );
+  // }
 
   function getSemicircleControlPoint(p1: [number, number], p2: [number, number]): [number, number] {
     const centerX = (p1[0] + p2[0]) / 2;
@@ -75,22 +108,13 @@ export default makeScene2D(function* (view) {
     return [centerX, p1[1] + direction * radius];
   }
 
-  function waitForClick(): Promise<void> {
-    return new Promise(resolve => {
-      const handler = () => {
-        document.removeEventListener('pointerdown', handler);
-        resolve();
-      };
-      document.addEventListener('pointerdown', handler);
-    });
-  }
 
   for (let i = 0; i < markerCount - 1; i++) {
     // const element = array[i];
     const line = (<Line
       points={[
         [xPoints[i], 5],
-        getSemicircleControlPoint([xPoints[i],5],[xPoints[i+1],5]),
+        getSemicircleControlPoint([xPoints[i], 5], [xPoints[i + 1], 5]),
         [xPoints[i + 1], 5],
       ]}
       stroke={'red'}
@@ -100,7 +124,7 @@ export default makeScene2D(function* (view) {
       arrowSize={20}
     />);
 
-    console.log(xPoints[i],xPoints[i+1]);
+    console.log(xPoints[i], xPoints[i + 1]);
 
     view.add(line);
 
