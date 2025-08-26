@@ -1,7 +1,25 @@
-import { Circle, Line, Txt, Img, makeScene2D } from '@motion-canvas/2d';
-import { all, waitFor, useLogger, createRef } from '@motion-canvas/core';
+import { Circle, Line, Txt, Img, Rect, Gradient, makeScene2D } from '@motion-canvas/2d';
+import { all, waitFor, useLogger, createRef, Vector2 } from '@motion-canvas/core';
 
 export default makeScene2D(function* (view) {
+  const gradient = new Gradient({
+    from: new Vector2(-960, 0), // left edge
+    to: new Vector2(960, 0),    // right edge
+    stops: [
+      { offset: 0, color: '#ff6a00' },
+      { offset: 1, color: '#bd266fff' },
+    ],
+  });
+
+  view.add(
+    <Rect
+      width={1920}
+      height={1080}
+      fill={gradient}
+    />
+  );
+
+
   const logger = useLogger();
 
   const markerCount = 5;
