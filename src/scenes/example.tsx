@@ -1,14 +1,15 @@
-import { Circle, Line, Txt, makeScene2D } from '@motion-canvas/2d';
-import { all, waitFor, createRef } from '@motion-canvas/core';
+import { Circle, Line, Txt, makeScene2D} from '@motion-canvas/2d';
+import { all, waitFor, waitUntil, createRef } from '@motion-canvas/core';
 
 export default makeScene2D(function* (view) {
-  const markerCount = 20;
+  const markerCount = 5;
   const xAxisExtend = 50;
   const startX = -500;
   const endX = 500;
   const spacing = (endX - startX) / (markerCount - 1);
 
   const lineRef = createRef<Line>();
+  const xPoints: number[] = [];
   const markerRefs = Array.from({ length: markerCount }, () => createRef<Circle>());
   const labelRefs = Array.from({ length: markerCount }, () => createRef<Txt>());
 
@@ -31,6 +32,7 @@ export default makeScene2D(function* (view) {
   for (let i = 0; i < markerCount; i++) {
     const x = startX + i * spacing;
 
+    xPoints.push(x);
     view.add(
       <Circle
         ref={markerRefs[i]}
@@ -63,5 +65,47 @@ export default makeScene2D(function* (view) {
       markerRefs[i]().scale(1, 0.5),
       labelRefs[i]().opacity(1, 0.5)
     );
+  }
+
+  function getSemicircleControlPoint(p1: [number, number], p2: [number, number]): [number, number] {
+    const centerX = (p1[0] + p2[0]) / 2;
+    const radius = Math.abs(p2[0] - p1[0]) / 2;
+    const direction = p1[1] === p2[1] ? -1 : Math.sign(p2[1] - p1[1]); // Curve upward if horizontal
+
+    return [centerX, p1[1] + direction * radius];
+  }
+
+  function waitForClick(): Promise<void> {
+    return new Promise(resolve => {
+      const handler = () => {
+        document.removeEventListener('pointerdown', handler);
+        resolve();
+      };
+      document.addEventListener('pointerdown', handler);
+    });
+  }
+
+  for (let i = 0; i < markerCount - 1; i++) {
+    // const element = array[i];
+    const line = (<Line
+      points={[
+        [xPoints[i], 5],
+        getSemicircleControlPoint([xPoints[i],5],[xPoints[i+1],5]),
+        [xPoints[i + 1], 5],
+      ]}
+      stroke={'red'}
+      lineWidth={7}
+      radius={25}
+      endArrow
+      arrowSize={20}
+    />);
+
+    console.log(xPoints[i],xPoints[i+1]);
+
+    view.add(line);
+
+    // yield* waitUntil('click');
+
+
   }
 });
