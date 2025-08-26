@@ -1,0 +1,67 @@
+import { Circle, Line, Txt, makeScene2D } from '@motion-canvas/2d';
+import { all, waitFor, createRef } from '@motion-canvas/core';
+
+export default makeScene2D(function* (view) {
+  const markerCount = 20;
+  const xAxisExtend = 50;
+  const startX = -500;
+  const endX = 500;
+  const spacing = (endX - startX) / (markerCount - 1);
+
+  const lineRef = createRef<Line>();
+  const markerRefs = Array.from({ length: markerCount }, () => createRef<Circle>());
+  const labelRefs = Array.from({ length: markerCount }, () => createRef<Txt>());
+
+  view.add(
+    <Line
+      ref={lineRef}
+      points={[
+        [startX - xAxisExtend, 0],
+        [endX + xAxisExtend, 0],
+      ]}
+      stroke={'lightseagreen'}
+      lineWidth={8}
+      radius={40}
+      startArrow
+      endArrow
+      arrowSize={20}
+    />
+  );
+
+  for (let i = 0; i < markerCount; i++) {
+    const x = startX + i * spacing;
+
+    view.add(
+      <Circle
+        ref={markerRefs[i]}
+        x={x}
+        y={0}
+        width={20}
+        height={20}
+        fill={'#fdbb2d'}
+        scale={0}
+      />
+    );
+
+    view.add(
+      <Txt
+        ref={labelRefs[i]}
+        text={`${i + 1}`}
+        x={x}
+        y={-30}
+        fontSize={24}
+        fill={'yellow'}
+        opacity={0}
+      />
+    );
+  }
+
+  // Animate markers and labels
+  for (let i = 0; i < markerCount; i++) {
+    yield* waitFor(0.2);
+    yield* all(
+      markerRefs[i]().scale(1, 0.5),
+      labelRefs[i]().opacity(1, 0.5)
+    );
+  }
+});
