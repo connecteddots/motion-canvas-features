@@ -1,153 +1,75 @@
-import { Circle, Line, Txt, Img, Rect, Gradient, makeScene2D } from '@motion-canvas/2d';
-import { all, waitFor, useLogger, createRef, Vector2 } from '@motion-canvas/core';
+import { Circle, Line, Txt, Layout, makeScene2D, View2D, Shape } from '@motion-canvas/2d';
+import { all, Logger, chain, waitFor, useLogger, createRef, Vector2, makeRef, Reference } from '@motion-canvas/core';
+
+import { calculateCirclePoint, calculateCirclePoints } from "../utils/math"
+import { PointLabelRef } from '../utils/types';
 
 export default makeScene2D(function* (view) {
-  const gradient = new Gradient({
-    from: new Vector2(-960, 0), // left edge
-    to: new Vector2(960, 0),    // right edge
-    stops: [
-      { offset: 0, color: '#ff6a00' },
-      { offset: 1, color: '#bd266fff' },
-    ],
-  });
 
-  view.add(
-    <Rect
-      width={1920}
-      height={1080}
-      fill={gradient}
-    />
-  );
+  const logger = new Logger();
 
+  const fontFamily = 'Cascadia Code';
+  const pointColor = `rgba(227, 209, 14, 0.8)`;
+  const circleColor = `rgba(209, 120, 176, 0.8)`;
 
-  const logger = useLogger();
+  const line1 = createRef<Line>();
+  const circle = createRef<Circle>();
 
-  const markerCount = 5;
-  const xAxisExtend = 50;
-  const startX = -500;
-  const endX = 500;
-  const spacing = (endX - startX) / (markerCount - 1);
+  const circlePoint = 180;
+  const points: Circle[] = [];
+  const radius = 250;
+  const center = { x: 0, y: 0 };
 
-  const lineRef = createRef<Line>();
-  const xPoints: number[] = [];
-  const markerRefs = Array.from({ length: markerCount }, () => createRef<Circle>());
-  const labelRefs = Array.from({ length: markerCount }, () => createRef<Txt>());
+  view.fill('rgba(79, 56, 79, 0.8)');
 
-  view.add(
-    <Line
-      ref={lineRef}
-      points={[
-        [startX - xAxisExtend, 0],
-        [endX + xAxisExtend, 0],
-      ]}
-      stroke={'lightseagreen'}
-      lineWidth={8}
-      radius={40}
-      startArrow
-      endArrow
-      arrowSize={20}
-    />
-  );
+  // add origin
+  const p0 = addPointWithLabel(view, pointColor, fontFamily, center);
 
-  for (let i = 0; i < markerCount; i++) {
-    const x = startX + i * spacing;
+  // add point 1
+  const p1 = addPointWithLabel(view, pointColor, fontFamily, { x: center.x + radius, y: center.y });
 
-    xPoints.push(x);
-    view.add(
-      <Circle
-        ref={markerRefs[i]}
-        x={x}
-        y={0}
-        width={20}
-        height={20}
-        fill={'#fdbb2d'}
-        scale={0}
-      />
-    );
+  // add circle points
+  const circlePoints = calculateCirclePoints(center, radius, Array.from({ length: circlePoint }, (_, x) => x * (360 / circlePoint)));
 
-    view.add(
-      <Txt
-        ref={labelRefs[i]}
-        text={`${i + 1}`}
-        x={x}
-        y={-30}
-        fontSize={24}
-        fill={'yellow'}
-        opacity={0}
-      />
-    );
+  view.add(circlePoints.map((p, i) => <Circle ref={makeRef(points, i)} fill={circleColor} width={3} height={3} x={p.x} y={p.y} opacity={0} />))
 
-    yield* waitFor(0.2);
-    yield* all(
-      markerRefs[i]().scale(1, 0.5),
-      labelRefs[i]().opacity(1, 0.5)
-    );
+  view.add(<Circle ref={circle} fill={circleColor} width={radius * 2} height={radius * 2} x={center.x} y={center.y} opacity={0} />)
 
-    for (let index = 0; index <= i; index++) {
-      logger.info(`${i},${index},${-100 - i * 100}`)
+  view.add(<Line ref={line1} points={[[center.x, center.y], [radius, center.y]]} stroke={circleColor} lineWidth={4} endArrow arrowSize={10} opacity={0} />);
 
-      const ref = createRef<Img>();
-      yield view.add(
-        <Img
-          x={x}
-          y={-100 - index * 100}
-          ref={ref}
-          src="../../assets/black rabbit standing.svg"
-          width={50}
-          radius={50}
-        />,
-      );
+  console.log(typeof p0);
 
-      yield all(
-        ref().size([100, 100], 1).to([50, null], 1),
-        ref().radius(50, 1).to(20, 1),
-        // ref().alpha(0, 1).to(1, 1),
-      );
-      yield* waitFor(0.5);
-    }
+  yield* chain(
+    all((p0.node as any).opacity(0.1, 0.2).to(1, .3), (p0.label as any).opacity(0.1, 0.2).to(1, .3)),
+    waitFor(.5),
+    all((p1.node as any).opacity(0.1, 0.2).to(1, .3), (p1.label as any).opacity(0.1, 0.2).to(1, .3)),
+    waitFor(.5),
+    line1().opacity(0.1, 0.2).to(1, .3),
+    waitFor(.5),
+    chain(...points.map(p => p.opacity(1, .005))),
+    waitFor(.5),
+    circle().opacity(0.1, .005).to(.7, .5)
+  )
 
-
-  }
-
-  // Animate markers and labels
-  // for (let i = 0; i < markerCount; i++) {
-  //   yield* waitFor(0.2);
-  //   yield* all(
-  //     markerRefs[i]().scale(1, 0.5),
-  //     labelRefs[i]().opacity(1, 0.5)
-  //   );
-  // }
-
-  function getSemicircleControlPoint(p1: [number, number], p2: [number, number]): [number, number] {
-    const centerX = (p1[0] + p2[0]) / 2;
-    const radius = Math.abs(p2[0] - p1[0]) / 2;
-    const direction = p1[1] === p2[1] ? -1 : Math.sign(p2[1] - p1[1]); // Curve upward if horizontal
-
-    return [centerX, p1[1] + direction * radius];
-  }
-
-
-  for (let i = 0; i < markerCount - 1; i++) {
-    // const element = array[i];
-    const line = (<Line
-      points={[
-        [xPoints[i], 5],
-        getSemicircleControlPoint([xPoints[i], 5], [xPoints[i + 1], 5]),
-        [xPoints[i + 1], 5],
-      ]}
-      stroke={'red'}
-      lineWidth={7}
-      radius={25}
-      endArrow
-      arrowSize={20}
-    />);
-
-    console.log(xPoints[i], xPoints[i + 1]);
-
-    view.add(line);
-
-    // yield* waitUntil('click');
-
-
-  }
 });
+
+function addPointWithLabel(view: View2D, pointColor: string, fontFamily: string, center: { x: number; y: number; }): PointLabelRef {
+  const result: PointLabelRef = { node: null, label: null };
+
+  view.add(<Circle ref={makeRef(result, "node")}
+    fill={pointColor}
+    x={center.x}
+    y={center.y}
+    height={10}
+    width={10}
+    opacity={0} />);
+
+  view.add(<Txt fontFamily={fontFamily}
+    ref={makeRef(result, 'label')}
+    fontSize={20} fontWeight={600}
+    x={center.x + 20} y={center.y - 20}
+    opacity={0}
+    fill={pointColor}>({center.x.toString()},{center.y.toString()})</Txt>);
+
+  return result;
+}
